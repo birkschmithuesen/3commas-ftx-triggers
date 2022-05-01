@@ -203,10 +203,11 @@ def get_positions():
     open_positions = {}
     all_positions = ftx.fetchPositions(None, {"showAvgPrice": True})
     for x in all_positions:
-        future = (x["future"])
-        size = (x["size"])
-        side = (x["side"])
-        cost = (x["cost"])
+        print(x)
+        future = (x["info"]["future"])
+        size = (x["info"]["size"])
+        side = (x["info"]["side"])
+        cost = (x["info"]["cost"])
         recentAverageOpenPrice = (x["recentAverageOpenPrice"])
         if size != '0.0':
             open_positions[future] = size, side, cost, recentAverageOpenPrice
