@@ -134,8 +134,13 @@ def send_bull_trigger(pair, ids):
     error, bot_trigger = p3cw.request(
         entity = 'bots',
         action = 'start_new_deal',
-        action_id = bot_id
-    )   
+        action_id = bot_id,
+        payload = {
+            'pair': 'USD_'+pair#BTC-PERP'
+        }
+    )
+    print('USD_'+pair)
+    print(f'USD_{pair}')
     print(f'Long trigger for {pair}')
     return bot_trigger
 
@@ -148,7 +153,10 @@ def send_bear_trigger(pair, ids):
     error, bot_trigger = p3cw.request(
         entity = 'bots',
         action = 'start_new_deal',
-        action_id = bot_id
+        action_id = bot_id,
+        payload = {
+            'pair': 'USD_'+pair#BTC-PERP'
+        }
     )
     print(f'Short trigger for {pair}')
     return bot_trigger
@@ -203,11 +211,11 @@ def get_positions():
     open_positions = {}
     all_positions = ftx.fetchPositions(None, {"showAvgPrice": True})
     for x in all_positions:
-        future = (x["future"])
-        size = (x["size"])
-        side = (x["side"])
-        cost = (x["cost"])
-        recentAverageOpenPrice = (x["recentAverageOpenPrice"])
+        future = (x["info"]["future"])
+        size = (x["info"]["size"])
+        side = (x["info"]["side"])
+        cost = (x["info"]["cost"])
+        recentAverageOpenPrice = (x["info"]["recentAverageOpenPrice"])
         if size != '0.0':
             open_positions[future] = size, side, cost, recentAverageOpenPrice
     return open_positions
@@ -265,11 +273,11 @@ if not longbots_file.is_file() or not shortbots_file.is_file():
 
 #load files into a dictionary
 
-long_bot_ids = {}
-short_bot_ids = {}
+long_bot_id = {}
+short_bot_id = {}
 
-long_bot_ids = load_bot_ids("lbotid_list.txt")
-short_bot_ids = load_bot_ids("sbotid_list.txt")
+long_bot_id = load_bot_ids("lbotid_list.txt")
+short_bot_id = load_bot_ids("sbotid_list.txt")
 
 tradeable_balance = get_tradeable_balance()
 
@@ -355,22 +363,22 @@ while True:
         x = 0
         for x in range(len(cut_positions)):
             key = cut_positions[x]
-            close_deal(key, all_open_positions[key][1], long_bot_ids, short_bot_ids)
+            close_deal(key, all_open_positions[key][1], long_bot_id, short_bot_id)
             
         # switch positions - first market close, then market open new positions
         x = 0
         for x in range(len(switch_positions)):
             key = switch_positions[x]
-            close_deal(key, all_open_positions[key][1], long_bot_ids, short_bot_ids)
+            close_deal(key, all_open_positions[key][1], long_bot_id, short_bot_id)
         time.sleep(5)
 
         x = 0
         for x in range(len(switch_positions)):
             key = switch_positions[x]
             if all_open_positions[key][1] == "buy" and not no_bears:
-                send_bear_trigger(key, short_bot_ids)
+                send_bear_trigger(key, short_bot_id)
             elif all_open_positions[key][1] == "sell" and not no_bulls:
-                send_bull_trigger(key, long_bot_ids)
+                send_bull_trigger(key, long_bot_id)
 
         # get new open positions count
         open_positions = get_positions()
@@ -383,9 +391,9 @@ while True:
             for n in range(number_of_pairs):
                 highest_bull_pair = get_nth_key(top_bull_pairs, n)
                 if highest_bull_pair not in open_positions and available_positions > 0 and not no_bulls:
-                    if "USD_"+highest_bull_pair in long_bot_ids:
+                    if "USD_"+highest_bull_pair in long_bot_id:
                         available_positions -= 1 # move after the call to 3commas, wrap in if, looking for a success message from 3c?
-                        trigger_long_bot = send_bull_trigger(highest_bull_pair, long_bot_ids)
+                        trigger_long_bot = send_bull_trigger(highest_bull_pair, long_bot_id)
                         print("<<<>>>")
 
         if top_bear_pairs:
@@ -394,9 +402,9 @@ while True:
             for n in range(number_of_pairs):
                 highest_bear_pair = get_nth_key(top_bear_pairs, n)
                 if highest_bear_pair not in open_positions and available_positions > 0 and not no_bears:
-                    if "USD_"+highest_bear_pair in short_bot_ids:
+                    if "USD_"+highest_bear_pair in short_bot_id:
                         available_positions -= 1
-                        trigger_short_bot = send_bear_trigger(highest_bear_pair, short_bot_ids)
+                        trigger_short_bot = send_bear_trigger(highest_bear_pair, short_bot_id)
                         print("<<<>>>")
 
         del price[0]

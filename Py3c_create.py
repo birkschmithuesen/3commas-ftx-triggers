@@ -28,6 +28,14 @@ def get_markets():
     all_markets = ftx.load_markets(True)
     return all_markets
 
+def get_min_order_price(markets):
+    limits = {}
+    for key in markets:
+        if "PERP" in markets[key]["id"] and not any(perp in markets[key]["id"] for perp in config.PAIRS_BLACKLIST):
+            if "minProvideSize" in markets[key]["info"]:
+                limits["USD_"+markets[key]["id"]] = math.ceil(float(markets[key]["info"]["minProvideSize"]) * float(markets[key]["info"]["price"]))
+    return limits
+
 def build_tc_pairs_list(pairs):
     ftx_pairs = {}
     tc_pairs = {}
@@ -38,18 +46,11 @@ def build_tc_pairs_list(pairs):
         tc_pairs["USD_"+key] = ""
     return tc_pairs
 
-def get_min_order_price(markets):
-    limits = {}
-    for key in markets:
-        if "PERP" in markets[key]["id"] and not any(perp in markets[key]["id"] for perp in config.PAIRS_BLACKLIST):
-            if "minProvideSize" in markets[key]["info"]:
-                limits["USD_"+markets[key]["id"]] = math.ceil(float(markets[key]["info"]["minProvideSize"]) * float(markets[key]["info"]["price"]))
-    return limits
-
 
 def generate_long_bots(pairs, minprice):
     bot_list = {}
     order_too_low = []
+    multibot_created = False
     for key in pairs:
         if config.BASE_ORDER_VOLUME > minprice[key]:
             error, data = p3cw.request(
@@ -85,6 +86,7 @@ def generate_long_bots(pairs, minprice):
             f = open("lbotid_list.txt", "a")
             f.write(f'{key}:{bot_list[key]}\n')
             f.close()
+            multibot_created = True
         else:
             print(f'Order volume too low for {key}, bot not created')
             order_too_low.append(key)
@@ -146,8 +148,8 @@ def generate_short_bots(pairs, minprice):
 def build_bots():
     global markets
     markets = get_markets()
-    pairs_list = build_tc_pairs_list(markets)
     min_price = get_min_order_price(markets)
+    pairs_list = build_tc_pairs_list(markets)
     longbot_list, no_long_bots = generate_long_bots(pairs_list, min_price)
     shortbot_list, no_short_bots = generate_short_bots(pairs_list, min_price)
     #add list of too low order value pairs to a file.
